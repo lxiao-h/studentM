@@ -18,11 +18,13 @@
 import StudentList from '@/components/StudentList.vue';
 import student from '@/api/student';
 import StuInfo from '@/components/StuInfo.vue';
+import formatStu from '@/utils/formatStu';
+import { mapState, mapActions } from 'vuex';
 
 export default {
   data() {
     return {
-      dataTable: [],
+      // dataTable: [],
       isShow: false,
       stuInfo: {},
     };
@@ -31,33 +33,39 @@ export default {
     StudentList,
     StuInfo,
   },
-  beforeCreate() {
-    student.getAllStudent().then((res) => {
-      this.dataTable = res.data.map((i) => ({
-        ...i,
-        sex1: i.sex === 0 ? '男' : '女',
-        age:
-          new Date().getFullYear()
-          - parseInt(i.birth.toString().slice(0, 4), 0),
-      }));
-    });
+  computed: { // ['page', 'total', 'size']
+
+    ...mapState({
+      page: (state) => state.page,
+      totla: (state) => state.totla,
+      size: (state) => state.size,
+      dataTable: (state) => state.student,
+    }),
   },
-  created() {},
+  async beforeCreate() {
+    // const data = await student.getByPage(`page=1&size=${this.size}`);
+    // //  .then((res) => {
+    // this.setTotal(Math.ceil(data.cont / this.size));
+    // this.dataTable = formatStu(data);
+    // // });
+  },
+  async  created() {
+    const data = await student.getByPage(`page=1&size=${this.size}`);
+    // console.log(data.data);
+    // console.log(Math.ceil(data.data.cont / this.size));
+    this.setTotal(Math.ceil(data.data.cont / this.size));
+    this.setStu(formatStu(data.data.findByPage));
+  },
   methods: {
+    ...mapActions(['setStu', 'setTotal']),
     delStu(info) {
       console.log(info);
       student.deleteBySno(`sNo=${info.sNo}`).then((r) => {
         console.log(r);
         if (r.status === 'success') {
           alert('删除成功');
-          student.getAllStudent().then((res) => {
-            this.dataTable = res.data.map((i) => ({
-              ...i,
-              sex1: i.sex === 0 ? '男' : '女',
-              age:
-                new Date().getFullYear()
-                - parseInt(i.birth.toString().slice(0, 4), 0),
-            }));
+          student.getByPage(`page=${this.page}&size=${this.size}`).then((res) => {
+            this.dataTable = formatStu(res.data);
           });
         } else {
           console.log(r.msg);
@@ -65,13 +73,11 @@ export default {
       });
     },
     editStu(info) {
-      // console.log(info);
       this.stuInfo = info;
       this.isShow = true;
     },
     subInfo(info) {
       const stu = info;
-      // console.log('提交了');
       this.isShow = false;
       const birt = new Date().getFullYear() - info.age;
       stu.birth = birt;
@@ -79,14 +85,8 @@ export default {
         `sNo=${stu.sNo}&name=${stu.name}&sex=${stu.sex}&birth=${stu.birth}&phone=${stu.phone}&address=${stu.address}&email=${stu.email}`,
       ).then((res) => {
         if (res.status === 'success') {
-          student.getAllStudent().then((r) => {
-            this.dataTable = r.data.map((i) => ({
-              ...i,
-              sex1: i.sex === 0 ? '男' : '女',
-              age:
-                new Date().getFullYear()
-                - parseInt(i.birth.toString().slice(0, 4), 0),
-            }));
+          student.getByPage(`page=${this.page}&size=${this.size}`).then((r) => {
+            this.dataTable = formatStu(r.data);
           });
         } else {
           console.log(res.msg);
